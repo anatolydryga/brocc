@@ -26,7 +26,7 @@ python scripts/create_ncbi_taxonomy_db.py --gi_taxid gi_taxid_nucl.zip  \
 
 python scripts/create_ncbi_taxonomy_db.py --gi_taxid gi_taxid_prot.zip \
     --taxdmp taxdmp.zip --out taxonomy_db_prot.sqlite
-```bash
+```
 
 
 Running
