@@ -12,31 +12,31 @@ class NcbiEutils(object):
         self._fresh = True
 
     def get_lineage(self, taxon_id):
-         """Extract taxonomic lineage.
+        """Extract taxonomic lineage.
 
-         Args:
-            taxon_id: NCBI taxid
- 
-         Returns:
-             dictionary with keys equals to ranks 
-             and values equals to scientific name of each rank
-             or None if full lineage cannot be retrieved.
+        Args:
+           taxon_id: NCBI taxid
 
-         Note:
-            taxonomic nodes with rank equal to "no rank" are ignored.
-         """
+        Returns:
+            dictionary with keys equals to ranks 
+            and values equals to scientific name of each rank
+            or None if full lineage cannot be retrieved.
+
+        Note:
+           taxonomic nodes with rank equal to "no rank" are ignored.
+        """
         if taxon_id not in self.lineages:
             self._fresh = False
             self.lineages[taxon_id] = get_lineage(taxon_id)
         return self.lineages[taxon_id]
 
     def get_taxon_id(self, gi_num):
-         """for a protein or nucleotide GI finds NCBI taxid.
+        """for a protein or nucleotide GI finds NCBI taxid.
  
-         Returns:
-             taxid number as string
-             or None if cannot get taxid.
-         """
+        Returns:
+            taxid number as string
+            or None if cannot get taxid.
+        """
         if gi_num not in self.taxon_ids:
             self._fresh = False
             self.taxon_ids[gi_num] = get_taxid(gi_num)
