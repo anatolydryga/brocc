@@ -4,77 +4,20 @@ import sqlite3
 import os
 from StringIO import StringIO
 
-from brocclib.taxonomy_db import (
-    init_db, parse_gi_taxid, insert_taxid, parse_names, insert_names,
-    parse_nodes, insert_nodes,
-    )
-
-class FunctionTests(unittest.TestCase):
-    def setUp(self):
-        _, self.db = tempfile.mkstemp()
-        init_db(self.db)
-
-    def tearDown(self):
-        os.remove(self.db)
-    
-    def test_init_db(self):
-        conn = sqlite3.connect(self.db)
-        obs = list(conn.execute(
-            'SELECT name FROM sqlite_master WHERE type = "table"'))
-        self.assertEqual([x[0] for x in obs], ["gi_taxid", "nodes", "names"])
-
-    def test_parse_gi_taxid(self):
-        f = StringIO(gi_taxid)
-        obs = list(parse_gi_taxid(f))
-        exp = [["2", "9913"], ["3", "9913"], ["4", "9646"], ["5", "9913"]]
-        self.assertEqual(obs, exp)
-
-    def test_insert_taxid(self):
-        f = StringIO(gi_taxid)
-        insert_taxid(self.db, f)
-        conn = sqlite3.connect(self.db)
-        obs = list(conn.execute('SELECT * FROM gi_taxid'))
-        exp = [(2, 9913), (3, 9913), (4, 9646), (5, 9913)]
-        self.assertEqual(obs, exp)
-        
-    def test_parse_names(self):
-        f = StringIO(names)
-        obs = list(parse_names(f))
-        self.assertEqual(obs, [["1", "root"], ["2", "Bacteria"]])
-
-    def test_insert_names(self):
-        f = StringIO(names)
-        insert_names(self.db, f)
-        conn = sqlite3.connect(self.db)
-        obs = list(conn.execute('SELECT * FROM names'))
-        exp = [(1, "root"), (2, "Bacteria")]
-        self.assertEqual(obs, exp)
-
-    def test_parse_nodes(self):
-        f = StringIO(nodes)
-        obs = list(parse_nodes(f))
-        self.assertEqual(obs, [
-            ["1", "1", "no rank"],
-            ["2", "131567", "superkingdom"],
-            ["6", "335928", "genus"]])
-
-    def test_insert_nodes(self):
-        f = StringIO(nodes)
-        insert_nodes(self.db, f)
-        conn = sqlite3.connect(self.db)
-        obs = list(conn.execute('SELECT * FROM nodes'))
-        exp = [
-            (1, 1, "no rank"),
-            (2, 131567, "superkingdom"),
-            (6, 335928, "genus")]
-        self.assertEqual(obs, exp)
-
+from brocclib.taxonomy_db import TaxDB
 
 gi_taxid = """\
-2	9913
-3	9913
-4	9646
-5	9913
+2	1
+3	1
+4	2
+5	2
+"""
+
+# taxid is not in names and nodes thus cannot be proccessed
+gi_taxid_with_invalid_taxid = """\
+2	1
+4	2
+100	123456789
 """
 
 names = """\
@@ -92,5 +35,68 @@ nodes = """\
 6	|	335928	|	genus	|		|	0	|	1	|	11	|	1	|	0	|	1	|	0	|	0	|		|
 """
 
+class Test_TaxDB(unittest.TestCase):
+    def setUp(self):
+        _, self.db = tempfile.mkstemp()
+        self.tax_db = TaxDB(self.db, StringIO(gi_taxid), StringIO(nodes), StringIO(names))
+
+    def tearDown(self):
+        os.remove(self.db)
+        self.tax_db.close()
+    
+    def test_init_db(self):
+        conn = sqlite3.connect(self.db)
+        obs = list(conn.execute(
+            'SELECT name FROM sqlite_master WHERE type = "table"'))
+        tables = [x[0] for x in obs]
+        self.assertEqual(set(tables), set(["gi_taxid", "nodes"]))
+
+    def test_parse_names(self):
+        f = StringIO(names)
+        obs = list(self.tax_db._parse_names(f))
+        self.assertEqual(obs, [["1", "root"], ["2", "Bacteria"]])
+
+    def test_parse_nodes(self):
+        f = StringIO(nodes)
+        obs = list(self.tax_db._parse_nodes(f))
+        self.assertEqual(obs, [
+            ["1", "1", "no rank"],
+            ["2", "131567", "superkingdom"],
+            ["6", "335928", "genus"]])
+
+    def test_insert_nodes_names(self):
+        conn = sqlite3.connect(self.db)
+        obs = list(conn.execute('SELECT * FROM nodes'))
+        exp = [
+            (1, 1, "no rank", "root"),
+            (2, 131567, "superkingdom", "Bacteria")
+            ]
+        self.assertEqual(obs, exp)
+
+    def test_taxid_search(self):
+        self.assertTrue(self.tax_db._is_taxid_exist(1))
+        self.assertTrue(self.tax_db._is_taxid_exist(2))
+        self.assertFalse(self.tax_db._is_taxid_exist(3))
+
+    def test_parse_gi_taxid(self):
+        f = StringIO(gi_taxid)
+        obs = list(self.tax_db._parse_gi_taxid(f))
+        exp = [["2", "1"], ["3", "1"], ["4", "2"], ["5", "2"]]
+        self.assertEqual(obs, exp)
+
+    def test_insert_gi_taxid(self):
+        conn = sqlite3.connect(self.db)
+        obs = list(conn.execute('SELECT * FROM gi_taxid'))
+        exp = [(2, 1), (3, 1), (4, 2), (5, 2)]
+        self.assertEqual(obs, exp)
+
+    def test_insert_taxid_with_invalid_taxid(self):
+        _, db = tempfile.mkstemp()
+        tax_db = TaxDB(db, StringIO(gi_taxid_with_invalid_taxid), StringIO(nodes), StringIO(names))
+        conn = sqlite3.connect(db)
+        obs = list(conn.execute('SELECT * FROM gi_taxid'))
+        exp = [(2, 1), (4, 2)]
+        self.assertEqual(obs, exp)
+        
 if __name__ == "__main__":
     unittest.main()

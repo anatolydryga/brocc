@@ -14,6 +14,20 @@ To install BROCC system-wide, run this command in the current directory.
 
     python setup.py install
 
+To install taxonomy database, copy and paste the commands below in a shell:
+
+```bash
+wget ftp://ftp.ncbi.nih.gov/pub/taxonomy/gi_taxid_nucl.zip
+wget ftp://ftp.ncbi.nih.gov/pub/taxonomy/gi_taxid_prot.zip
+wget ftp://ftp.ncbi.nih.gov/pub/taxonomy/taxdmp.zip
+
+python scripts/create_ncbi_taxonomy_db.py --gi_taxid gi_taxid_nucl.zip  \
+    --taxdmp taxdmp.zip --out taxonomy_db_nucl.sqlite
+
+python scripts/create_ncbi_taxonomy_db.py --gi_taxid gi_taxid_prot.zip \
+    --taxdmp taxdmp.zip --out taxonomy_db_prot.sqlite
+```bash
+
 
 Running
 -------
@@ -51,3 +65,12 @@ minimum identity defaults for ITS1 are 95.2% at the species level and
 83.05% at the genus level (taken from Liggenstoffer et al).  For 18S,
 settings of 99.0% at the species level and 96.0% at the genus level
 seem to produce the most accurate and stable assignments.
+
+Testing
+---------------
+
+From brocc directory run:
+
+```bash
+nosetests
+```
